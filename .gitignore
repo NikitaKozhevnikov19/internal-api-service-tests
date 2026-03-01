@@ -1,0 +1,8 @@
+.gradle
+build/
+!gradle-wrapper.jar
+.idea/
+*.iml
+out/
+allure-results/
+allure-report/

@@ -1,0 +1,43 @@
+plugins {
+    id 'java-library'
+    id 'io.qameta.allure' version '2.11.2'
+    id 'io.freefair.lombok' version '8.4'
+}
+
+group = 'kozherka.ru'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+def allureVersion = "2.24.0"
+
+dependencies {
+    testImplementation "io.rest-assured:rest-assured:5.3.1"
+    testImplementation "io.qameta.allure:allure-rest-assured:$allureVersion"
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testImplementation 'com.github.tomakehurst:wiremock-jre8:2.35.0'
+    testImplementation 'org.apache.commons:commons-lang3:3.12.0'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.9'
+    testImplementation 'io.rest-assured:json-schema-validator:5.3.1'
+}
+
+allure {
+    report { version.set(allureVersion) }
+    adapter {
+        aspectjWeaver.set(true)
+        frameworks { junit5 { adapterVersion.set(allureVersion) } }
+    }
+}
+
+test {
+    useJUnitPlatform()
+    systemProperties(System.getProperties())
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

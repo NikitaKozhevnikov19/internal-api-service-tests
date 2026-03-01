@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json-schema.org",
+  "type": "object",
+  "properties": {
+    "result": { "type": "string" },
+    "message": { "type": ["string", "null"] }
+  },
+  "required": ["result"]
+}
