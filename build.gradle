@@ -33,11 +33,25 @@ allure {
     }
 }
 
-test {
-    useJUnitPlatform()
-    systemProperties(System.getProperties())
-}
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform {
+
+        def tag = System.getProperty("groups")
+        if (tag != null && !tag.isEmpty()) {
+            includeTags tag
+        }
+    }
+
+    systemProperty "file.encoding", "UTF-8"
+
+    systemProperties(System.getProperties())
+
+    testLogging {
+        events "started", "skipped", "passed", "failed"
+        exceptionFormat "short"
+    }
 }
