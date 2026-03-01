@@ -18,10 +18,22 @@
 4. **Кастомная отчетность**: Подключены `.ftl` шаблоны для Allure, что позволяет наглядно просматривать Request/Response прямо в отчете.
 5. **Fluent API**: Тесты написаны в "столбик" для максимальной читаемости и поддержки кода.
 
-## Запуск
-1. Запустить тестируемое приложение:
-   `java -jar -Dsecret=qazWSXedc -Dmock=http://localhost:8888/ internal-0.0.1-SNAPSHOT.jar`
-2. Запустить тесты:
-   `./gradlew clean test`
-3. Сгенерировать отчет:
-   `./gradlew allureServe`
+# ▶️ Запуск тестов
+
+### 1. Запустить тестируемое приложение:
+```bash
+java -jar -Dsecret=qazWSXedc -Dmock=http://localhost:8888/ internal-0.0.1-SNAPSHOT.jar
+```
+### 2. Запуск автотестов:
+Для запуска всех сценариев (Positive + Negative):
+```bash
+./gradlew clean test
+```
+Для запуска только позитивных сценариев (фильтрация по JUnit Tags):
+```bash
+./gradlew clean test -Dgroups=positive
+```
+### 3. Сгенерировать отчет:
+```bash
+./gradlew allureServe
+```
