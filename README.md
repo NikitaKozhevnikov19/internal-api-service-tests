@@ -22,7 +22,8 @@
 
 ### 1. Запустить тестируемое приложение:
 ```bash
-java -jar -Dsecret=qazWSXedc -Dmock=http://localhost:8888/ internal-0.0.1-SNAPSHOT.jar
+java -jar -Dsecret=qazWSXedc -Dmock=http://localhost:8888/ app/internal-0.0.1-SNAPSHOT.jar
+
 ```
 ### 2. Запуск автотестов:
 Для запуска всех сценариев (Positive + Negative):
