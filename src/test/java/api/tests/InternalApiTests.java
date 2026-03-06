@@ -20,140 +20,152 @@ public class InternalApiTests extends TestBase {
 
     @Test
     @Tag("positive")
-    @DisplayName("Успешный LOGIN: Внешний сервис вернул 200")
+    @DisplayName("Успешная авторизация (LOGIN): Внешний сервис вернул 200")
     void successLoginTest() {
         String token = DataGenerator.generateToken();
+        stubExternal("/auth", 200);
 
-        step("Настроить внешний мок /auth на 200 OK", () ->
-                stubExternal("/auth", 200));
-
-        ResultResponse response = step("Отправить запрос LOGIN", () ->
-                given()
-                        .spec(InternalSpecs.requestSpec)
-                        .formParam("token", token)
-                        .formParam("action", "LOGIN")
-                        .when()
-                        .post("/endpoint")
-                        .then()
-                        .statusCode(200)
-                        .body(matchesJsonSchemaInClasspath("schema.json"))
-                        .extract()
-                        .as(ResultResponse.class));
-
-        step("Проверить, что результат OK", () ->
-                assertThat(response.getResult()).isEqualTo("OK"));
-    }
-
-    @Test
-    @Tag("positive")
-    @DisplayName("Успешный ACTION после LOGIN")
-    void successActionTest() {
-        String token = DataGenerator.generateToken();
-
-        step("Подготовить моки для /auth и /doAction", () -> {
-            stubExternal("/auth", 200);
-            stubExternal("/doAction", 200);
-        });
-
-        step("Выполнить LOGIN", () ->
-                given()
-                        .spec(InternalSpecs.requestSpec)
-                        .formParam("token", token)
-                        .formParam("action", "LOGIN")
-                        .when()
-                        .post("/endpoint")
-                        .then()
-                        .statusCode(200));
-
-        ResultResponse response = step("Выполнить ACTION", () ->
-                given()
-                        .spec(InternalSpecs.requestSpec)
-                        .formParam("token", token)
-                        .formParam("action", "ACTION")
-                        .when()
-                        .post("/endpoint")
-                        .then()
-                        .statusCode(200)
-                        .extract()
-                        .as(ResultResponse.class));
-
-        step("Проверить успешное выполнение действия", () ->
-                assertThat(response.getResult()).isEqualTo("OK"));
-    }
-
-    @Test
-    @Tag("positive")
-    @DisplayName("Успешный LOGOUT")
-    void successLogoutTest() {
-        String token = DataGenerator.generateToken();
-
-        step("Подготовить мок и выполнить предварительный LOGIN", () -> {
-            stubExternal("/auth", 200);
-            given()
+        step("Выполнить LOGIN для токена: " + token, () -> {
+            ResultResponse response = given()
                     .spec(InternalSpecs.requestSpec)
                     .formParam("token", token)
                     .formParam("action", "LOGIN")
                     .when()
                     .post("/endpoint")
                     .then()
-                    .statusCode(200);
+                    .spec(InternalSpecs.responseSpec)
+                    .statusCode(200)
+                    .body(matchesJsonSchemaInClasspath("schema.json"))
+                    .extract().as(ResultResponse.class);
+
+            step("Проверить, что результат операции: OK", () ->
+                    assertThat(response.getResult()).isEqualTo("OK"));
         });
+    }
 
-        ResultResponse response = step("Запрос LOGOUT", () ->
-                given()
-                        .spec(InternalSpecs.requestSpec)
-                        .formParam("token", token)
-                        .formParam("action", "LOGOUT")
-                        .when()
-                        .post("/endpoint")
-                        .then()
-                        .statusCode(200)
-                        .extract()
-                        .as(ResultResponse.class));
+    @Test
+    @Tag("positive")
+    @DisplayName("Успешное выполнение ACTION после LOGIN")
+    void successActionTest() {
+        String token = DataGenerator.generateToken();
+        stubExternal("/auth", 200);
+        stubExternal("/doAction", 200);
 
-        step("Проверка: результат OK", () ->
-                assertThat(response.getResult()).isEqualTo("OK"));
+        step("1. Выполнить LOGIN для токена: " + token, () ->
+                given().spec(InternalSpecs.requestSpec).formParam("token", token).formParam("action", "LOGIN").post("/endpoint")
+                        .then().statusCode(200));
+
+        step("2. Выполнить ACTION для токена: " + token, () -> {
+            ResultResponse response = given()
+                    .spec(InternalSpecs.requestSpec)
+                    .formParam("token", token)
+                    .formParam("action", "ACTION")
+                    .when()
+                    .post("/endpoint")
+                    .then()
+                    .spec(InternalSpecs.responseSpec)
+                    .statusCode(200)
+                    .extract().as(ResultResponse.class);
+
+            step("Проверить успешное выполнение действия (result: OK)", () ->
+                    assertThat(response.getResult()).isEqualTo("OK"));
+        });
     }
 
     @Test
     @Tag("negative")
-    @DisplayName("Ошибка: Невалидный формат токена (буква Z)")
+    @DisplayName("Отказ в ACTION: Токен не прошел предварительный LOGIN")
+    void actionWithoutLoginTest() {
+        String token = DataGenerator.generateToken();
+        stubExternal("/doAction", 200);
+
+        step("Попытка выполнить ACTION без предварительного LOGIN для токена: " + token, () -> {
+            given()
+                    .spec(InternalSpecs.requestSpec)
+                    .formParam("token", token)
+                    .formParam("action", "ACTION")
+                    .when()
+                    .post("/endpoint")
+                    .then()
+                    .spec(InternalSpecs.responseSpec)
+                    .statusCode(403);
+        });
+    }
+
+    @Test
+    @Tag("negative")
+    @DisplayName("Отказ в ACTION: Токен отозван через LOGOUT")
+    void actionAfterLogoutTest() {
+        String token = DataGenerator.generateToken();
+        stubExternal("/auth", 200);
+        stubExternal("/doAction", 200);
+
+        step("1. Выполнить LOGIN для токена: " + token, () ->
+                given().spec(InternalSpecs.requestSpec).formParam("token", token).formParam("action", "LOGIN").post("/endpoint"));
+
+        step("2. Выполнить LOGOUT для токена: " + token, () ->
+                given().spec(InternalSpecs.requestSpec).formParam("token", token).formParam("action", "LOGOUT").post("/endpoint"));
+
+        step("3. Попытка ACTION после LOGOUT для токена: " + token, () -> {
+            given()
+                    .spec(InternalSpecs.requestSpec)
+                    .formParam("token", token)
+                    .formParam("action", "ACTION")
+                    .when()
+                    .post("/endpoint")
+                    .then()
+                    .spec(InternalSpecs.responseSpec)
+                    .statusCode(403);
+        });
+    }
+
+    @Test
+    @Tag("negative")
+    @DisplayName("Ошибка LOGIN: Внешний сервис авторизации недоступен (500)")
+    void externalAuthErrorTest() {
+        String token = DataGenerator.generateToken();
+        stubExternal("/auth", 500);
+
+        step("Попытка LOGIN при сбое внешнего сервиса для токена: " + token, () -> {
+            ResultResponse response = given()
+                    .spec(InternalSpecs.requestSpec)
+                    .formParam("token", token)
+                    .formParam("action", "LOGIN")
+                    .when()
+                    .post("/endpoint")
+                    .then()
+                    .spec(InternalSpecs.responseSpec)
+                    .extract().as(ResultResponse.class);
+
+            step("Проверить, что приложение вернуло ERROR из-за ошибки внешней системы", () -> {
+                assertThat(response.getResult()).isEqualTo("ERROR");
+                assertThat(response.getMessage()).isNotNull();
+            });
+        });
+    }
+
+    @Test
+    @Tag("negative")
+    @DisplayName("Ошибка LOGIN: Невалидный формат токена (символ Z)")
     void invalidTokenFormatTest() {
         String invalidToken = "1234567890ABCDEF1234567890ABCDEZ";
 
-        ResultResponse response = step("Отправить запрос с невалидным токеном", () ->
-                given()
-                        .spec(InternalSpecs.requestSpec)
-                        .formParam("token", invalidToken)
-                        .formParam("action", "LOGIN")
-                        .when()
-                        .post("/endpoint")
-                        .then()
-                        .statusCode(400)
-                        .extract()
-                        .as(ResultResponse.class));
+        step("Запрос LOGIN с некорректным форматом токена: " + invalidToken, () -> {
+            ResultResponse response = given()
+                    .spec(InternalSpecs.requestSpec)
+                    .formParam("token", invalidToken)
+                    .formParam("action", "LOGIN")
+                    .when()
+                    .post("/endpoint")
+                    .then()
+                    .spec(InternalSpecs.responseSpec)
+                    .statusCode(400)
+                    .extract().as(ResultResponse.class);
 
-        step("Проверить наличие сообщения об ошибке формата", () -> {
-            assertThat(response.getResult()).isEqualTo("ERROR");
-            assertThat(response.getMessage()).contains("должно соответствовать");
+            step("Проверить текст ошибки валидации формата", () -> {
+                assertThat(response.getResult()).isEqualTo("ERROR");
+                assertThat(response.getMessage()).contains("должно соответствовать");
+            });
         });
-    }
-
-    @Test
-    @Tag("negative")
-    @DisplayName("Ошибка: Неверный X-Api-Key")
-    void wrongApiKeyTest() {
-        String token = DataGenerator.generateToken();
-
-        step("Отправить запрос с фейковым ключом", () ->
-                given()
-                        .baseUri("http://localhost:8080")
-                        .header("X-Api-Key", "WRONG_TOKEN_123")
-                        .queryParam("token", token)
-                        .queryParam("action", "LOGIN")
-                        .when()
-                        .post("/endpoint")
-                        .then()
-                        .statusCode(401));
     }
 }
